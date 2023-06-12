@@ -7,16 +7,49 @@
 
 import React, {useEffect} from 'react';
 import {
+  PermissionsAndroid,
   SafeAreaView,
   StatusBar,
   Text,
-  ToastAndroid,
   View,
   useColorScheme,
 } from 'react-native';
 
+import {requestNotifications} from 'react-native-permissions';
 import {Colors} from 'react-native/Libraries/NewAppScreen';
-import useDeviceMovement from './Src/hooks/useDeviceMovement';
+import LocationService from './LocationService';
+
+async function requestUserPermission() {
+  await requestNotifications();
+  await requestLocationPermissions();
+}
+
+const requestLocationPermissions = async () => {
+  try {
+    const foregroundGranted = await PermissionsAndroid.request(
+      PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
+    );
+
+    if (foregroundGranted === PermissionsAndroid.RESULTS.GRANTED) {
+      const backgroundGranted = await PermissionsAndroid.request(
+        PermissionsAndroid.PERMISSIONS.ACCESS_BACKGROUND_LOCATION,
+      );
+
+      if (backgroundGranted === PermissionsAndroid.RESULTS.GRANTED) {
+        console.log('Location Permission Granted');
+        LocationService.startService();
+      } else {
+        // Background location permission denied
+        // Handle the denial or inform the user accordingly
+      }
+    } else {
+      // Foreground location permission denied
+      // Handle the denial or inform the user accordingly
+    }
+  } catch (error) {
+    console.log('Error occurred while requesting location permissions:', error);
+  }
+};
 
 function App() {
   const isDarkMode = useColorScheme() === 'dark';
@@ -25,11 +58,16 @@ function App() {
     backgroundColor: isDarkMode ? Colors.darker : Colors.lighter,
   };
 
-  const {speed} = useDeviceMovement();
+  // const {speed} = useDeviceMovement();
+
+  // useEffect(() => {
+  //   ToastAndroid.show(`Speed ${speed} KM/H`, 1000);
+  // }, [speed]);
 
   useEffect(() => {
-    ToastAndroid.show(`Speed ${speed} KM/H`, 1000);
-  }, [speed]);
+    // Start the location service
+    requestUserPermission();
+  }, []);
 
   return (
     <SafeAreaView style={backgroundStyle}>
