@@ -14,6 +14,8 @@ import android.app.Service;
 import android.location.LocationRequest;
 import android.os.Build;
 import android.os.IBinder;
+import android.provider.Settings;
+import android.text.TextUtils;
 import android.util.Log;
 
 import androidx.activity.result.ActivityResultLauncher;
@@ -40,6 +42,10 @@ public class LocationService extends Service implements LocationListener {
         locationManager = (LocationManager) getSystemService(LOCATION_SERVICE);
     }
 
+    public boolean isLocationEnabled() {
+        return locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER);
+    }
+
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         // Request location updates
@@ -58,25 +64,21 @@ public class LocationService extends Service implements LocationListener {
     private void createNotificationChannel() {
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
             chan = new NotificationChannel(CHANNEL_ID, "Driving " + (moving ? "ON" : "OFF"), NotificationManager.IMPORTANCE_HIGH);
-        }
-
-        NotificationManager manager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
-        assert manager != null;
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            NotificationManager manager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+            assert manager != null;
             manager.createNotificationChannel(chan);
+            notificationBuilder = new NotificationCompat.Builder(this, CHANNEL_ID);
+            Notification notification = notificationBuilder
+                    .setOngoing(true)
+                    .setSmallIcon(R.mipmap.ic_launcher)
+                    .setContentTitle("Driving " + (moving ? "ON" : "OFF"))
+                    .setContentText("Speed " + speed)
+                    .setPriority(NotificationManager.IMPORTANCE_HIGH)
+                    .setCategory(Notification.CATEGORY_SERVICE)
+                    .setChannelId(CHANNEL_ID).build();
+
+            startForeground(1, notification);
         }
-
-        notificationBuilder = new NotificationCompat.Builder(this, CHANNEL_ID);
-        Notification notification = notificationBuilder
-                .setOngoing(true)
-                .setSmallIcon(R.mipmap.ic_launcher)
-                .setContentTitle("Driving " + (moving ? "ON" : "OFF"))
-                .setContentText("Speed " + speed)
-                .setPriority(NotificationManager.IMPORTANCE_HIGH)
-                .setCategory(Notification.CATEGORY_SERVICE)
-                .setChannelId(CHANNEL_ID).build();
-
-        startForeground(1, notification);
     }
 
 
@@ -106,7 +108,7 @@ public class LocationService extends Service implements LocationListener {
     @Override
     public void onLocationChanged(@NonNull Location location) {
         moving = location.hasSpeed() && location.getSpeed() > 0;
-        speed = location.hasSpeed() && location.getSpeed() > 0 ? Integer.parseInt(String.valueOf(location.getSpeed() * 3.6)) + " KM/H" : "0 KM/H";
+        speed = location.hasSpeed() && location.getSpeed() > 0 ? ((int) Math.round(location.getSpeed() * 3.6)) + " KM/H" : "0 KM/H";
 
         updateNotification();
 
